@@ -13,7 +13,7 @@ RUN npm install
 RUN npx tsc
 
 ENV PORT_TPLINK=7201
-# Make port 3000 available to the world outside this container
+# Make port 7201 available to the world outside this container
 EXPOSE ${PORT_TPLINK}
 
 # Define environment variable
