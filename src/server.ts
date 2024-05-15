@@ -19,6 +19,7 @@ app.get("/", (req, res) => {
 })
 
 let isProvisioning = false
+app.use(express.json())
 app.use("/provision", (req, res, next) => {
     if (isProvisioning) {
         return res.status(503).send("Already provisioning a router");
@@ -28,8 +29,8 @@ app.use("/provision", (req, res, next) => {
     next();
 });
 
-app.get("/provision", async (req, res) => {
-    let {hostname, ssid, psk} = req.query
+app.post("/provision", async (req, res) => {
+    let {hostname, ssid, psk} = req.body
     if (!hostname === undefined || ssid === undefined || psk === undefined) {
         return res.status(400).send("/provision?hostname=<HOSTNAME>&ssid=<SSID>&psk=<PSK>")
     }
@@ -55,11 +56,12 @@ app.get("/provision", async (req, res) => {
             return res.send("Success")
         } else {
             const {error, screenshot} = result
-            return res.status(500).send("<pre>" + error + "</pre><img src='data:image/png;base64," + screenshot.toString('base64') + "'></img>")
+            const img = screenshot ? "<img src='data:image/png;base64," + screenshot?.toString('base64') + "'></img>" : ""
+            return res.status(500).send("<pre>" + error + "</pre>" + img)
         }
     }).catch(e => {
         console.error(e)
-        res.status(500).send(e)
+        res.status(500).send(e.message || e)
     })
 })
 

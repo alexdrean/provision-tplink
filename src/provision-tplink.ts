@@ -9,19 +9,29 @@ type Params = {
     psk: string,
 }
 
-export async function setupTPLink(params: Params) {
+export async function setupTPLink(params: Params): Promise<true | {error: any, screenshot?: Buffer}> {
 
     const browser = await chromium.launch({headless: true})
     const page = await browser.newPage({viewport: {width: 1280, height: 1280}})
+    let i = 0;
     while (true) {
         try {
-            await page.goto("http://192.168.88.1")
+            await page.goto("http://192.168.88.1", {timeout: 3000})
             break
         } catch (e) {
             // @ts-ignore
-            if (typeof e.message === 'string' && e.message.startsWith("page.goto: net::ERR_ADDRESS_UNREACHABLE")) {} else
+            if (typeof e.message === 'string' && (e.message.startsWith("page.goto: net::ERR_ADDRESS_UNREACHABLE") || e.message.startsWith("page.goto: Timeout"))) {
+                i++
+                if (i >= 10) {
+                    console.log("Cannot connect to router")
+                    return {error: "Cannot connect to router"}
+                }
+            } else {
                 // @ts-ignore
                 console.log(e.message || e)
+                // @ts-ignore
+                return {error: e.message || e}
+            }
             await sleep(0.5)
         }
     }
