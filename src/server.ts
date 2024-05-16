@@ -65,7 +65,7 @@ app.post("/provision", async (req, res) => {
             return res.send("Success")
         } else {
             const {error, screenshot} = result
-            const img = screenshot ? "<img src='data:image/png;base64," + screenshot?.toString('base64') + "'></img>" : ""
+            const img = screenshot ? "<img style='width: 100%' src='data:image/png;base64," + screenshot?.toString('base64') + "'></img>" : ""
             return res.status(500).send("<pre>" + error + "</pre>" + img)
         }
     }).catch(e => {
