@@ -1,4 +1,5 @@
 import {chromium, Page} from "playwright";
+import {assertNotCancelled} from "./server";
 
 type Task = "Login" | "Hostname" | "WiFi" | "Admin" | "Reset"
 type Params = {
@@ -15,6 +16,7 @@ export async function setupTPLink(params: Params): Promise<true | {error: any, s
     const page = await browser.newPage({viewport: {width: 1280, height: 1280}})
     let i = 0;
     while (true) {
+        assertNotCancelled()
         try {
             await page.goto("http://192.168.88.1", {timeout: 3000})
             break
@@ -137,11 +139,17 @@ async function login(page: Page, password: string, alternativePasswords?: string
 }
 
 async function loaded(page: Page) {
+    assertNotCancelled()
     await page.waitForLoadState()
+    assertNotCancelled()
     await page.waitForLoadState("networkidle")
+    assertNotCancelled()
 }
 
-const sleep = (seconds: number) => new Promise((resolve) => setTimeout(resolve, seconds * 1000))
+const sleep = (seconds: number) => new Promise<void>((resolve, reject) => setTimeout(() => {
+    try {assertNotCancelled()} catch (e) {reject(e)}
+    resolve()
+}, seconds * 1000))
 
 async function setHostname(page: Page, hostname: string) {
     console.log("Go to WAN page")

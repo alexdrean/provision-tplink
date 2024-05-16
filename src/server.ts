@@ -19,12 +19,20 @@ app.get("/", (req, res) => {
 })
 
 let isProvisioning = false
+let cancelProvisioning = false
+export const assertNotCancelled = () => {
+    if (cancelProvisioning) {
+        cancelProvisioning = false
+        throw new Error("cancelled by user")
+    }
+}
 app.use(express.json())
 app.use("/provision", (req, res, next) => {
     if (isProvisioning) {
         return res.status(503).send("Already provisioning a router");
     }
     isProvisioning = true;
+    cancelProvisioning = false
     res.on("finish", () => { isProvisioning = false; });
     next();
 });
@@ -63,6 +71,20 @@ app.post("/provision", async (req, res) => {
         console.error(e)
         res.status(500).send(e.message || e)
     })
+})
+
+app.delete("/provision", async (req, res) => {
+    if (isProvisioning) {
+        if (cancelProvisioning) {
+            return res.status(409).send("Cancel already requested")
+        } else {
+            cancelProvisioning = true
+            return res.status(202).send("Cancel requested")
+        }
+    } else {
+        return res.status(400).send("Not provisioning")
+    }
+
 })
 
 app.listen(port, () => {
