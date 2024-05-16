@@ -74,6 +74,7 @@ app.post("/provision", async (req, res) => {
 })
 
 app.delete("/provision", async (req, res) => {
+    console.log("Cancel requested, isProvisioning="+isProvisioning+", cancelProvisioning=" + cancelProvisioning)
     if (isProvisioning) {
         if (cancelProvisioning) {
             return res.status(409).send("Cancel already requested")
