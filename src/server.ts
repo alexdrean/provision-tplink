@@ -28,6 +28,7 @@ export const assertNotCancelled = () => {
 }
 app.use(express.json())
 app.use("/provision", (req, res, next) => {
+    if (req.method !== "POST") return next();
     if (isProvisioning) {
         return res.status(503).send("Already provisioning a router");
     }
