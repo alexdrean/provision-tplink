@@ -46,6 +46,9 @@ app.post("/provision", async (req, res) => {
     if (typeof hostname !== 'string') {
         return res.status(400).send("Hostname must be a string")
     }
+    if (!/^[a-zA-Z0-9]([\-_a-zA-Z0-9]*[a-zA-Z0-9])?$/.test(hostname)) {
+        return res.status(400).send("Hostname must be a valid hostname: A-Za-z0-9 and -_")
+    }
     if (typeof ssid !== 'string') {
         return res.status(400).send("SSID must be a string")
     }
