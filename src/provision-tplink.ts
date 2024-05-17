@@ -14,6 +14,7 @@ export async function setupTPLink(params: Params): Promise<true | {error: any, s
 
     const browser = await chromium.launch({headless: true})
     const page = await browser.newPage({viewport: {width: 1280, height: 1280}})
+    page.setDefaultTimeout(10e3)
     let i = 0;
     while (true) {
         assertNotCancelled()
