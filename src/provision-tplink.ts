@@ -278,15 +278,21 @@ async function toggleRadioButtonTo(page: Page, id: string, state: boolean) {
     }
 }
 
-async function waitForMaskOff(page: Page) {
-    while (await page.locator("div#mask").isHidden()) await sleep(0.05)
-    let i = 0;
-    while (true) {
-        await sleep(0.05)
-        if (await page.isVisible("div#mask"))
-            i = 0
-        else
-            i++
-        if (i >= 10) break
-    }
+async function waitForMaskOff(page: Page, timeout: number = 30000) {
+    return Promise.race([async () => {
+        while (await page.locator("div#mask").isHidden()) await sleep(0.05)
+        let i = 0;
+        while (true) {
+            await sleep(0.05)
+            if (await page.isVisible("div#mask"))
+                i = 0
+            else
+                i++
+            if (i >= 10) break
+        }
+    }, new Promise((_, reject) => {
+        setTimeout(() => {
+            reject("waitForMaskOff timeout")
+        }, timeout)
+    })])
 }
