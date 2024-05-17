@@ -52,7 +52,7 @@ app.post("/provision", async (req, res) => {
     if (typeof psk !== "string" || psk.length < 8) {
         return res.status(400).send("PSK must be at least 8 characters")
     }
-    hostname = hostnamePrefix + req.query.hostname
+    hostname = hostnamePrefix + hostname
     console.log("Start provisioning")
     setupTPLink({
         password: process.env.MAIN_PASSWORD!,
