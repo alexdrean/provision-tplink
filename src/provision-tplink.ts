@@ -286,7 +286,7 @@ async function toggleRadioButtonTo(page: Page, id: string, state: boolean) {
 }
 
 async function waitForMaskOff(page: Page, timeout: number = 30000) {
-    return Promise.race([async () => {
+    const _f = async () => {
         while (await page.locator("div#mask").isHidden()) await sleep(0.05)
         let i = 0;
         while (true) {
@@ -297,7 +297,8 @@ async function waitForMaskOff(page: Page, timeout: number = 30000) {
                 i++
             if (i >= 10) break
         }
-    }, new Promise((_, reject) => {
+    }
+    return Promise.race([_f(), new Promise((_, reject) => {
         setTimeout(() => {
             reject("waitForMaskOff timeout")
         }, timeout)
