@@ -19,7 +19,7 @@ export async function setupTPLink(params: Params): Promise<true | {error: any, s
     }
     browser = await chromium.launch({headless: !DEBUG})
     const page = await browser.newPage({viewport: {width: 1280, height: 1280}})
-    page.setDefaultTimeout(10e3)
+    page.setDefaultTimeout(30e3)
     let i = 0;
     while (true) {
         assertNotCancelled()
@@ -285,7 +285,7 @@ async function toggleRadioButtonTo(page: Page, id: string, state: boolean) {
     }
 }
 
-async function waitForMaskOff(page: Page, timeout: number = 30000) {
+async function waitForMaskOff(page: Page, timeout: number = 60000) {
     const _f = async () => {
         while (await page.locator("div#mask").isHidden()) await sleep(0.05)
         let i = 0;
