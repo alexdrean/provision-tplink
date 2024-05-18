@@ -1,4 +1,4 @@
-import {chromium, Page} from "playwright";
+import {Browser, chromium, Page} from "playwright";
 import {assertNotCancelled} from "./server";
 
 type Task = "Login" | "Hostname" | "WiFi" | "Admin" | "Reset"
@@ -10,9 +10,14 @@ type Params = {
     psk: string,
 }
 
-export async function setupTPLink(params: Params): Promise<true | {error: any, screenshot?: Buffer}> {
+let browser: Browser;
+const DEBUG = process.env.DEBUG ?? false
 
-    const browser = await chromium.launch({headless: true})
+export async function setupTPLink(params: Params): Promise<true | {error: any, screenshot?: Buffer}> {
+    if (browser && browser.isConnected()) {
+        await browser.close()
+    }
+    browser = await chromium.launch({headless: !DEBUG})
     const page = await browser.newPage({viewport: {width: 1280, height: 1280}})
     page.setDefaultTimeout(10e3)
     let i = 0;
@@ -69,12 +74,14 @@ export async function setupTPLink(params: Params): Promise<true | {error: any, s
             if (res) tasks.shift()
         }
         console.log("All tasks done; success")
-        await browser.close()
         return true
     } catch (error) {
         console.error(error)
         const screenshot = await page.screenshot({type: "png"})
         return {error, screenshot}
+    } finally {
+        if (!DEBUG)
+            browser.close()
     }
 }
 
