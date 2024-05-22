@@ -1,5 +1,5 @@
 import {Browser, chromium, Page} from "playwright";
-import {assertNotCancelled} from "./server";
+import {assertNotCancelled, status} from "./server";
 
 type Task = "Login" | "Hostname" | "WiFi" | "Admin" | "Reset"
 type Params = {
@@ -14,12 +14,14 @@ let browser: Browser;
 const DEBUG = process.env.DEBUG ?? false
 
 export async function setupTPLink(params: Params): Promise<true | {error: any, screenshot?: Buffer}> {
+    status("Opening browser")
     if (browser && browser.isConnected()) {
         await browser.close()
     }
     browser = await chromium.launch({headless: !DEBUG})
     const page = await browser.newPage({viewport: {width: 1280, height: 1280}})
     page.setDefaultTimeout(30e3)
+    status("Connecting to router", 1)
     let i = 0;
     while (true) {
         assertNotCancelled()
@@ -87,13 +89,16 @@ export async function setupTPLink(params: Params): Promise<true | {error: any, s
 
 async function login(page: Page, password: string, alternativePasswords?: string[]) {
     if (await page.isVisible("#pc-setPwd-new")) {
+        status("Create password", 5)
         console.log("Create password")
         await page.locator("#pc-setPwd-new").fill(password)
         await page.locator("#pc-setPwd-confirm").fill(password)
         await page.locator("#pc-setPwd-btn").click()
         console.log("Password created")
+        status("Password created")
         return false
     } else if (await page.isVisible("#pc-login-password")) {
+        status("Log in", 10)
         const passwords = [password, ...alternativePasswords || []]
         for (const pw of passwords) {
             console.log("Log in with password " + pw)
@@ -112,32 +117,40 @@ async function login(page: Page, password: string, alternativePasswords?: string
                 console.log("Wrong password")
             } else {
                 console.log("Log in successful")
+                status("Logged in")
                 return false
             }
         }
         throw new Error("Invalid password")
     } else if (await page.isVisible("#t_regionNote")) {
+        status("Set region", 15)
         console.log("Set region")
         await tpSelectByText(page, "_region", "United States")
         await tpSelectByVal(page, "_timezone", "-07:00")
         await page.click("#next")
         await waitForMaskOff(page)
+        status("Region set")
         return false
     } else if (await page.isVisible("#wan_next")) {
+        status("Skip quick setup", 20)
         console.log("Skip everything, click next...")
         await page.click("#wan_next")
         await waitForMaskOff(page)
+        let progress = 21
         while (await page.isHidden("#advanced")) {
+            status("Skip quick setup", progress++)
             console.log("...click next")
             await page.click("#next")
             await waitForMaskOff(page)
         }
         console.log("Quick setup successful")
+        status("Quick setup successful", 30)
         await page.click("#advanced")
         await sleep(0.5)
         return true
     }else if (await page.isVisible("#advanced")) {
         console.log("Click Advanced")
+        status("Click advanced", 30)
         await page.click("#advanced")
         await sleep(0.5)
         return true
@@ -161,9 +174,11 @@ const sleep = (seconds: number) => new Promise<void>((resolve, reject) => setTim
 
 async function setHostname(page: Page, hostname: string) {
     console.log("Go to WAN page")
+    status("Go to WAN page", 35)
     await page.click(".ml1 > a[url='ethWan.htm']")
     await page.click(".ml2 > a[url='ethWan.htm']")
     await sleep(1)
+    status("Set hostname", 40)
     console.log("Open advanced setting")
     await page.click("#multiWanBody span.edit-modify-icon")
     await page.click("#multiWanEdit span.advanced-icon")
@@ -172,11 +187,13 @@ async function setHostname(page: Page, hostname: string) {
     await waitForMaskOff(page)
     await sleep(1)
     console.log("Hostname set to " + hostname)
+    status("Hostname set")
     return true
 }
 
 async function setWiFi(page: Page, ssid: string, psk: string) {
     console.log("Go to wireless page")
+    status("Go to wireless page", 45)
     if (await page.isHidden(".ml2 > a[url='wirelessSettings.htm']")) {
         await page.click(".ml1 > a[url='wirelessSettings.htm']")
         await sleep(0.5)
@@ -185,17 +202,20 @@ async function setWiFi(page: Page, ssid: string, psk: string) {
     await sleep(1)
     if (await page.isVisible("#enableOfdma")) {
         console.log("Enable OFDMA")
+        status("Enable OFDMA", 50)
         await toggleRadioButtonTo(page, "enableOfdma", true)
     }
     if (await page.isVisible("#enableTwt")) {
         console.log("Enable TWT")
+        status("Enable OFDMA", 60)
         await toggleRadioButtonTo(page, "enableTwt", true)
     }
+    status("Set SSID & PSK", 70)
     console.log("Set SSID & PSK")
     await page.fill("#ssid", ssid)
     await tpSelectByText(page, "_sec", "WPA-PSK[TKIP]+WPA2-PSK[AES]")
     await page.fill("#wpa2PersonalPwd", psk)
-
+    status("Set channel width", 75)
     let channelWidth = "20MHz"
     const hwver = await page.locator("#bot_hver").textContent()
     if (hwver !== null && hwver.includes("HX510")) channelWidth = "40MHz"
@@ -212,12 +232,14 @@ async function setWiFi(page: Page, ssid: string, psk: string) {
 
 async function setAdmin(page: Page) {
     console.log("Go to admin")
+    status("Go to admin", 80)
     if (await page.isHidden(".ml2 > a[url='manageCtrl.htm']")) {
         await page.click(".ml1 > a[url='time.htm']")
         await sleep(0.5)
     }
     await page.click(".ml2 > a[url='manageCtrl.htm']")
     await sleep(1)
+    status("Set remote access", 90)
     if (!await page.isChecked("#remoteHttpEn")) {
         console.log("Set remote http access on")
         await page.click("label[for=remoteHttpEn]")
@@ -225,6 +247,7 @@ async function setAdmin(page: Page) {
         await waitForMaskOff(page)
         await sleep(1);
     }
+    status("Set remote ping", 95)
     if (!await page.isChecked("#pingRemote")) {
         console.log("Set remote ping on")
         await page.click("label[for=pingRemote]")

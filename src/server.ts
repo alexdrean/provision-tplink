@@ -2,8 +2,12 @@ import express from "express"
 import 'dotenv/config'
 import {setupTPLink} from "./provision-tplink";
 import process from "process";
+import {createServer} from "http";
+import {Server} from "socket.io";
 
 const app = express()
+const server = createServer(app)
+const io = new Server(server)
 const port = process.env.PORT_TPLINK || 7201
 
 const password = process.env.MAIN_PASSWORD
@@ -26,17 +30,15 @@ export const assertNotCancelled = () => {
         throw new Error("cancelled by user")
     }
 }
-app.use(express.json())
-app.use("/provision", (req, res, next) => {
-    if (req.method !== "POST") return next();
-    if (isProvisioning) {
-        return res.status(503).send("Already provisioning a router");
+let provisioningStatus: {status?: string, progress?: number} = {}
+export const status = (status: string, progress?: number) => {
+    provisioningStatus = {
+        status,
+        progress: progress ?? provisioningStatus.progress,
     }
-    isProvisioning = true;
-    cancelProvisioning = false
-    res.on("finish", () => { isProvisioning = false; });
-    next();
-});
+    io.emit("status", status)
+}
+app.use(express.json())
 
 app.post("/provision", async (req, res) => {
     let {hostname, ssid, psk} = req.body
@@ -56,6 +58,12 @@ app.post("/provision", async (req, res) => {
         return res.status(400).send("PSK must be at least 8 characters")
     }
     hostname = hostnamePrefix + hostname
+    if (isProvisioning) {
+        return res.status(503).send("Already provisioning a router");
+    }
+    isProvisioning = true;
+    cancelProvisioning = false
+    status("Start provisioning", 0)
     console.log("Start provisioning")
     setupTPLink({
         password: process.env.MAIN_PASSWORD!,
@@ -65,15 +73,20 @@ app.post("/provision", async (req, res) => {
         psk
     }).then(result => {
         if (result === true) {
-            return res.send("Success")
+            status("Success", 100)
         } else {
             const {error, screenshot} = result
-            return res.status(500).send({error: error.toString(), screenshot: screenshot?.toString('base64')})
+            io.emit("status", {error: error.toString(), screenshot: screenshot?.toString('base64')})
         }
     }).catch(e => {
         console.error(e)
-        res.status(500).send(e.message || e)
+        io.emit("status", {error: e.message || e})
+    }).finally(() => {
+        isProvisioning = false
+        cancelProvisioning = false
+        provisioningStatus = {}
     })
+    return res.status(202).send("Provisioning requested")
 })
 
 app.delete("/provision", async (req, res) => {
@@ -91,6 +104,10 @@ app.delete("/provision", async (req, res) => {
 
 })
 
-app.listen(port, () => {
+io.on('connect', (socket) => {
+    console.log("Client connected")
+    socket.emit("status", provisioningStatus)
+})
+server.listen(port, () => {
     console.log("Listening on port " + port)
 })
