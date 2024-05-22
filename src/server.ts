@@ -36,7 +36,7 @@ export const status = (status: string, progress?: number) => {
         status,
         progress: progress ?? provisioningStatus.progress,
     }
-    io.emit("status", status)
+    io.emit("status", provisioningStatus)
 }
 app.use(express.json())
 
