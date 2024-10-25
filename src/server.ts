@@ -36,6 +36,8 @@ export const status = (status: string, progress?: number) => {
         status,
         progress: progress ?? provisioningStatus.progress,
     }
+    if (progress) console.log(progress + "%", status)
+    else console.log(status)
     io.emit("status", provisioningStatus)
 }
 app.use(express.json())
