@@ -30,15 +30,45 @@ export const assertNotCancelled = () => {
         throw new Error("cancelled by user")
     }
 }
-let provisioningStatus: {status?: string, progress?: number} = {}
+
+type ProvisioningStatusInProgress = {
+    status: string;
+    progress: number;
+}
+type ProvisioningStatusError = {
+    error: string;
+    screenshot: string;
+}
+type ProvisioningStatusDone = {
+    status: "Success"
+    progress: 100
+}
+type ProvisioningStatus = ProvisioningStatusInProgress | ProvisioningStatusError | ProvisioningStatusDone
+
+let callbackURL: string | undefined
+let provisioningStatus: ProvisioningStatusInProgress | undefined
 export const status = (status: string, progress?: number) => {
     provisioningStatus = {
         status,
-        progress: progress ?? provisioningStatus.progress,
+        progress: progress ?? provisioningStatus!.progress,
     }
     if (progress) console.log(progress + "%", status)
     else console.log(status)
     io.emit("status", provisioningStatus)
+    if (callbackURL) fetch(callbackURL, {
+        method: "POST",
+        headers: { 'Content-Type': "application/json" },
+        body: JSON.stringify(provisioningStatus),
+    })
+}
+export const statusError = (error: string | any, screenshot?: Buffer) => {
+    const s = {error: error.toString? error.toString() : (error.message || (error + "")), screenshot: screenshot?.toString('base64')}
+    if (callbackURL) fetch(callbackURL, {
+        method: "POST",
+        headers: { 'Content-Type': "application/json" },
+        body: JSON.stringify(s),
+    })
+    io.emit("status", s)
 }
 app.use(express.json())
 
@@ -65,6 +95,7 @@ app.post("/provision", async (req, res) => {
     }
     isProvisioning = true;
     cancelProvisioning = false
+    callbackURL = req.query.callbackURL as string | undefined
     status("Start provisioning", 0)
     console.log("Start provisioning")
     setupTPLink({
@@ -78,15 +109,15 @@ app.post("/provision", async (req, res) => {
             status("Success", 100)
         } else {
             const {error, screenshot} = result
-            io.emit("status", {error: error.toString(), screenshot: screenshot?.toString('base64')})
+            statusError(error || error, screenshot)
         }
     }).catch(e => {
         console.error(e)
-        io.emit("status", {error: e.message || e})
+        statusError(e)
     }).finally(() => {
         isProvisioning = false
         cancelProvisioning = false
-        provisioningStatus = {}
+        provisioningStatus = undefined
     })
     return res.status(202).send("Provisioning requested")
 })
