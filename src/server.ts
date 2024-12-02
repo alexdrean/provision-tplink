@@ -52,13 +52,14 @@ export const status = (status: string, progress?: number) => {
         status,
         progress: progress ?? provisioningStatus!.progress,
     }
+    const _status = provisioningStatus
     if (progress) console.log(progress + "%", status)
     else console.log(status)
-    io.emit("status", provisioningStatus)
+    io.emit("status", _status)
     if (callbackURL) fetch(callbackURL, {
         method: "POST",
         headers: { 'Content-Type': "application/json" },
-        body: JSON.stringify(provisioningStatus),
+        body: JSON.stringify(_status),
     }).catch(e => console.error("could not callback: " + e))
 }
 export const statusError = (error: string | any, screenshot?: Buffer) => {
