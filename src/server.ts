@@ -52,9 +52,10 @@ export const status = (status: string, progress?: number) => {
         status,
         progress: progress ?? provisioningStatus!.progress,
     }
-    const _status = provisioningStatus
+    const _status = {...provisioningStatus}
     if (progress) console.log(progress + "%", status)
     else console.log(status)
+    console.log(_status)
     io.emit("status", _status)
     if (callbackURL) fetch(callbackURL, {
         method: "POST",
@@ -69,6 +70,7 @@ export const statusError = (error: string | any, screenshot?: Buffer) => {
         headers: { 'Content-Type': "application/json" },
         body: JSON.stringify(s),
     }).catch(e => console.error("could not callback: " + e))
+    console.log(s)
     io.emit("status", s)
 }
 app.use(express.json())
