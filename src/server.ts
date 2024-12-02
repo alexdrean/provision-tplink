@@ -59,7 +59,7 @@ export const status = (status: string, progress?: number) => {
         method: "POST",
         headers: { 'Content-Type': "application/json" },
         body: JSON.stringify(provisioningStatus),
-    })
+    }).catch(e => console.error("could not callback: " + e))
 }
 export const statusError = (error: string | any, screenshot?: Buffer) => {
     const s = {error: error.toString? error.toString() : (error.message || (error + "")), screenshot: screenshot?.toString('base64')}
@@ -67,7 +67,7 @@ export const statusError = (error: string | any, screenshot?: Buffer) => {
         method: "POST",
         headers: { 'Content-Type': "application/json" },
         body: JSON.stringify(s),
-    })
+    }).catch(e => console.error("could not callback: " + e))
     io.emit("status", s)
 }
 app.use(express.json())
