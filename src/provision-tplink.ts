@@ -1,5 +1,5 @@
 import {Browser, chromium, Page} from "playwright";
-import {assertNotCancelled, status} from "./server";
+import {assertNotCancelled, status, statusError} from "./main";
 import * as fs from "node:fs";
 
 type Task = "Login" | "Upgrade" | "Hostname" | "WiFi" | "Admin" | "Reset"
@@ -34,12 +34,10 @@ export async function setupTPLink(params: Params): Promise<true | { error: any, 
             if (typeof e.message === 'string' && (e.message.startsWith("page.goto: net::ERR_ADDRESS_UNREACHABLE") || e.message.startsWith("page.goto: net::ERR_CONNECTION_REFUSED") || e.message.startsWith("page.goto: Timeout"))) {
                 i++
                 if (i >= 50) {
-                    console.log("Cannot connect to router")
+                    statusError("Cannot connect to router")
                     return {error: "Cannot connect to router"}
                 }
             } else {
-                // @ts-ignore
-                console.log(e.message || e)
                 // @ts-ignore
                 return {error: e.message || e}
             }
@@ -83,10 +81,8 @@ export async function setupTPLink(params: Params): Promise<true | { error: any, 
             }
             if (res) tasks.shift()
         }
-        console.log("All tasks done; success")
         return true
     } catch (error) {
-        console.error(error)
         const screenshot = await page.screenshot({type: "png"})
         return {error, screenshot}
     } finally {
@@ -107,7 +103,7 @@ async function login(page: Page, password: string, alternativePasswords?: string
         status("Log in", 10)
         const passwords = [password, ...alternativePasswords || []]
         for (const pw of passwords) {
-            console.log("Log in with password " + pw)
+            console.error("Log in with password " + pw)
             await page.locator("#pc-login-password").fill(pw)
             await page.locator("#pc-login-btn").click()
             await loaded(page)
@@ -120,7 +116,7 @@ async function login(page: Page, password: string, alternativePasswords?: string
                 }
             }
             if (await page.isVisible("#pc-login-password")) {
-                console.log("Wrong password")
+                console.error("Wrong password")
             } else {
                 status("Logged in")
                 return false
@@ -308,7 +304,7 @@ async function setAdmin(page: Page) {
 }
 
 async function reset(page: Page) {
-    console.log("Reset to factory defaults")
+    status("Reset to factory defaults")
     if (await page.isHidden(".ml2 > a[url='backNRestore.htm']")) {
         await page.click(".ml1 > a[url='time.htm']")
         await sleep(0.5)
@@ -319,7 +315,7 @@ async function reset(page: Page) {
     await sleep(0.25)
     await page.getByRole("button", {name: "Yes"}).click()
     await sleep(1)
-    console.log("Reset successful")
+    status("Reset to factory defaults success")
     return true
 }
 
